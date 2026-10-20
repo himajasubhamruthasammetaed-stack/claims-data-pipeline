@@ -1,0 +1,28 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: claims
+      POSTGRES_PASSWORD: claims
+      POSTGRES_DB: claims
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claims"]
+      interval: 5s
+      retries: 10
+
+  airflow:
+    image: apache/airflow:2.10.2-python3.11
+    command: standalone
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CLAIMS_DB_URL: postgresql+psycopg2://claims:claims@postgres:5432/claims
+      PYTHONPATH: /opt/airflow/project
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      _PIP_ADDITIONAL_REQUIREMENTS: "pandas SQLAlchemy psycopg2-binary"
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./:/opt/airflow/project
+    ports: ["8080:8080"]
