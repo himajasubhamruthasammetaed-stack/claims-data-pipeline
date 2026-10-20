@@ -1,0 +1,33 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: claims
+          POSTGRES_PASSWORD: claims
+          POSTGRES_DB: claims
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U claims" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - name: Unit and end-to-end tests (SQLite)
+        run: pytest -q
+      - name: Full pipeline run against PostgreSQL
+        env:
+          CLAIMS_DB_URL: postgresql+psycopg2://claims:claims@localhost:5432/claims
+        run: |
+          python -m pipeline.generate --out data/raw
+          python -m pipeline.load
